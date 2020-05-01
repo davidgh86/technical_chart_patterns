@@ -1,0 +1,1 @@
+Technical chart patterns analisis in stocks dataseries with alpaca, alphaadvantage and pandas
