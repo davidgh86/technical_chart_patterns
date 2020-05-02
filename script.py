@@ -162,6 +162,37 @@ def RSI(data, time_window):
     return rsi
 
 
+def get_extreme_point(series, index):
+    length = len(series)
+    if index < 0 or index >= length:
+        raise Exception("Error, wrong index of extreme point")
+    return series.index[index], series.values[index]
+
+
+def get_all_segments(series):
+    length = len(series)
+    result_array = []
+    for index1 in range(length - 1):
+        for index2 in range(index1 + 1, length):
+            result_array.append([get_extreme_point(series, index1), get_extreme_point(series, index2)])
+    return result_array
+
+
+def plot_single_segment(segment):
+    point1 = segment[0]
+    point2 = segment[1]
+
+    x_values = [point1[0], point2[0]]
+    y_values = [point1[1], point2[1]]
+    plt.plot(x_values, y_values)
+
+
+def plot_segments(segments):
+    for segment in segments:
+        plot_single_segment(segment)
+
+
+
 data = get_data('AAPL')
 resampled_data = resample_data(data)
 
@@ -171,6 +202,8 @@ window = 10
 max = get_max(resampled_data, smoothing, window)
 min = get_min(resampled_data, smoothing, window)
 
+all_segments = get_all_segments(max)
+
 resampled_data['RSI'] = RSI(resampled_data['close'], 14)
 
 plt.subplot(2, 1, 1)
@@ -178,6 +211,7 @@ plt.plot()
 resampled_data.reset_index()['close'].plot()
 plt.scatter(max.index, max.values, color='orange', alpha=.5)
 plt.scatter(min.index, min.values, color='green', alpha=.5)
+plot_segments(all_segments)
 
 plt.subplot(2, 1, 2)
 resampled_data['RSI'].plot()
