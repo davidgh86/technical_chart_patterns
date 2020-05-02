@@ -1,8 +1,7 @@
-import os
-
-import pandas as pd
 import config
 
+import os
+import pandas as pd
 from matplotlib import pyplot as plt
 import alpaca_trade_api as tradeapi
 import numpy as np
@@ -220,6 +219,42 @@ def filter_uncrossed_segments(segments, series, is_max):
     return result_segments
 
 
+def matches_time(price_segment, rsi_segment, offset=0):
+    matches_start = abs(price_segment[0][0] - rsi_segment[0][0]) <= offset
+    if not matches_start:
+        return False
+    return abs(price_segment[1][0] - rsi_segment[1][0]) <= offset
+
+
+def decreases(segment):
+    return segment[0][1] > segment[1][1]
+
+
+def increases(segment):
+    return segment[0][1] < segment[1][1]
+
+
+def is_divergent_or_convergent(price_segment, rsi_segment, offset=0):
+    if matches_time(price_segment, rsi_segment, offset):
+        if decreases(price_segment) and increases(rsi_segment):
+            return True
+        if increases(price_segment) and decreases(rsi_segment):
+            return True
+    return False
+
+
+def join_segments(price_segments, rsi_segments):
+    valid_convergences_divergences = []
+    for price_segment in price_segments:
+        for rsi_segment in rsi_segments:
+            if is_divergent_or_convergent(price_segment, rsi_segment):
+                valid_convergences_divergences.append(dict({
+                    "price_segment": price_segment,
+                    "rsi_segment": rsi_segment
+                }))
+    return valid_convergences_divergences
+
+
 data = get_data('AAPL')
 resampled_data = resample_data(data)
 
@@ -246,20 +281,31 @@ all_segments_min_rsi = get_all_segments(min_rsi)
 filtered_segments_max_rsi = filter_uncrossed_segments(all_segments_max_rsi, resampled_data['RSI'], True)
 filtered_segments_min_rsi = filter_uncrossed_segments(all_segments_min_rsi, resampled_data['RSI'], False)
 
+max_divergences_segments = join_segments(filtered_segments_max, filtered_segments_max_rsi)
+min_divergences_segments = join_segments(filtered_segments_min, filtered_segments_min_rsi)
+
+divergences = max_divergences_segments + min_divergences_segments
+
+prices_divergences = []
+rsi_divergences = []
+for divergence in divergences:
+    prices_divergences.append(divergence["price_segment"])
+    rsi_divergences.append(divergence["rsi_segment"])
 
 plt.subplot(2, 1, 1)
 plt.plot()
 resampled_data.reset_index()['close'].plot()
 plt.scatter(max.index, max.values, color='orange', alpha=.5)
 plt.scatter(min.index, min.values, color='green', alpha=.5)
-plot_segments(filtered_segments_max)
-plot_segments(filtered_segments_min)
+plot_segments(prices_divergences)
+# plot_segments(filtered_segments_min)
 
 plt.subplot(2, 1, 2)
 resampled_data.reset_index()['RSI'].plot()
 plt.scatter(max_rsi.index, max_rsi.values, color='orange', alpha=.5)
 plt.scatter(min_rsi.index, min_rsi.values, color='green', alpha=.5)
-plot_segments(filtered_segments_max_rsi)
-plot_segments(filtered_segments_min_rsi)
+plot_segments(rsi_divergences)
+# plot_segments(filtered_segments_min_rsi)
+
 
 plt.show()
