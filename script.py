@@ -192,6 +192,33 @@ def plot_segments(segments):
         plot_single_segment(segment)
 
 
+def points_segment_cross_series(segment, series, is_max=True):
+    init_index = segment[0][0]
+    end_index = segment[1][0]
+    # calculate function
+    linear_equation = get_linear_ecuation_from_segment(segment)
+    for i in range(init_index + 1, end_index):
+        linear_equation_value = linear_equation(i)
+        if (series.iloc[i] > linear_equation_value) and is_max:
+            return True
+        elif (series.iloc[i] < linear_equation_value) and (not is_max):
+            return True
+    return False
+
+
+def get_linear_ecuation_from_segment(segment):
+    slope = (segment[1][1] - segment[0][1]) / (segment[1][0] - segment[0][0])
+    independent_variable = segment[0][1] - (slope * segment[0][0])
+    return lambda x: (slope * x) + independent_variable
+
+
+def filter_uncrossed_segments(segments, series, is_max):
+    result_segments = []
+    for segment in segments:
+        if not points_segment_cross_series(segment, series, is_max):
+            result_segments.append(segment)
+    return result_segments
+
 
 data = get_data('AAPL')
 resampled_data = resample_data(data)
@@ -204,6 +231,8 @@ min = get_min(resampled_data, smoothing, window)
 
 all_segments = get_all_segments(max)
 
+filtered_segments = filter_uncrossed_segments(all_segments, resampled_data['close'], True)
+
 resampled_data['RSI'] = RSI(resampled_data['close'], 14)
 
 plt.subplot(2, 1, 1)
@@ -211,7 +240,7 @@ plt.plot()
 resampled_data.reset_index()['close'].plot()
 plt.scatter(max.index, max.values, color='orange', alpha=.5)
 plt.scatter(min.index, min.values, color='green', alpha=.5)
-plot_segments(all_segments)
+plot_segments(filtered_segments)
 
 plt.subplot(2, 1, 2)
 resampled_data['RSI'].plot()
