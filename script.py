@@ -243,7 +243,7 @@ def is_divergent_or_convergent(price_segment, rsi_segment, offset=0):
     return False
 
 
-def join_segments(price_segments, rsi_segments):
+def join_segments(price_segments, price_series, rsi_segments, rsi_series):
     valid_convergences_divergences = []
     for price_segment in price_segments:
         for rsi_segment in rsi_segments:
@@ -281,8 +281,10 @@ all_segments_min_rsi = get_all_segments(min_rsi)
 filtered_segments_max_rsi = filter_uncrossed_segments(all_segments_max_rsi, resampled_data['RSI'], True)
 filtered_segments_min_rsi = filter_uncrossed_segments(all_segments_min_rsi, resampled_data['RSI'], False)
 
-max_divergences_segments = join_segments(filtered_segments_max, filtered_segments_max_rsi)
-min_divergences_segments = join_segments(filtered_segments_min, filtered_segments_min_rsi)
+max_divergences_segments = join_segments(filtered_segments_max, resampled_data['close'],
+                                         filtered_segments_max_rsi, resampled_data['RSI'])
+min_divergences_segments = join_segments(filtered_segments_min, resampled_data['close'],
+                                         filtered_segments_min_rsi, resampled_data['RSI'])
 
 divergences = max_divergences_segments + min_divergences_segments
 
