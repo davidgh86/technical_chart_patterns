@@ -206,9 +206,14 @@ def points_segment_cross_series(segment, series, is_max=True):
 
 
 def get_linear_equation_from_segment(segment):
+    parameters = get_linear_equation_parameters(segment)
+    return lambda x: (parameters[0] * x) + parameters[1]
+
+
+def get_linear_equation_parameters(segment):
     slope = (segment[1][1] - segment[0][1]) / (segment[1][0] - segment[0][0])
     independent_variable = segment[0][1] - (slope * segment[0][0])
-    return lambda x: (slope * x) + independent_variable
+    return slope, independent_variable
 
 
 def filter_uncrossed_segments(segments, series, is_max):
@@ -243,15 +248,77 @@ def is_divergent_or_convergent(price_segment, rsi_segment, offset=0):
     return False
 
 
+def get_diff(segment, series):
+    equation_function = get_linear_equation_from_segment(segment)
+    diff_array = []
+    for index in range(segment[0][0]+1, segment[1][0]):
+        segment_y = equation_function(index)
+        diff_array.append(series.iloc[index] - segment_y)
+    return diff_array
+
+
+def get_directional_relationship(price_segment, price_series, rsi_segment, rsi_series):
+    linear_equation_price_parameters = get_linear_equation_parameters(price_segment)
+    price_slope = linear_equation_price_parameters[0]
+    linear_equation_rsi_parameters = get_linear_equation_parameters(rsi_segment)
+    rsi_slope = linear_equation_rsi_parameters[0]
+    directional_relationship_type = "divergent" if price_slope > 0 else "convergent"
+    price_diff = get_diff(price_segment, price_series)
+    price_area = np.sum(price_diff)
+    rsi_diff = get_diff(rsi_segment, rsi_series)
+    rsi_area = np.sum(rsi_diff)
+
+    index_segments = price_segment[0][0], price_segment[1][0] + 1
+
+    filtered_price_series = price_series.iloc[index_segments[0]:index_segments[1]]
+    filtered_rsi_series = price_series.iloc[index_segments[0]:index_segments[1]]
+
+    return {
+        "price_segment": price_segment,
+        "rsi_segment": rsi_segment,
+        "extremes_type": "min" if price_area > 0 else "max",
+        "directional_relationship_type": directional_relationship_type,
+        "slope_abs_diff": abs(price_slope) + abs(rsi_slope),
+        "price_relationship_info": {
+            "slope": price_slope,
+            "area": abs(price_area),
+            "min": filtered_price_series.min(),
+            "max": filtered_price_series.max(),
+            "mean": filtered_price_series.mean(),
+            "standard_deviation": filtered_price_series.std(),
+            "diff": {
+                "sum": price_area,
+                "min": np.min(price_diff),
+                "max": np.max(price_diff),
+                "mean": np.mean(price_diff),
+                "standard_deviation": np.std(price_diff)
+            }
+        },
+        "rsi_relationship_info": {
+            "slope": rsi_slope,
+            "area": abs(rsi_area),
+            "min": filtered_rsi_series.min(),
+            "max": filtered_rsi_series.max(),
+            "mean": filtered_rsi_series.mean(),
+            "standard_deviation": filtered_rsi_series.std(),
+            "diff": {
+                "sum": rsi_area,
+                "min": np.min(rsi_diff),
+                "max": np.max(rsi_diff),
+                "mean": np.mean(rsi_diff),
+                "standard_deviation": np.std(rsi_diff)
+            }
+        }
+    }
+
+
 def join_segments(price_segments, price_series, rsi_segments, rsi_series):
     valid_convergences_divergences = []
     for price_segment in price_segments:
         for rsi_segment in rsi_segments:
             if is_divergent_or_convergent(price_segment, rsi_segment):
-                valid_convergences_divergences.append(dict({
-                    "price_segment": price_segment,
-                    "rsi_segment": rsi_segment
-                }))
+                valid_convergences_divergences.append(
+                    get_directional_relationship(price_segment, price_series, rsi_segment, rsi_series))
     return valid_convergences_divergences
 
 
