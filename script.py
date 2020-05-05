@@ -1,4 +1,5 @@
 import config
+import constants
 
 import os
 import pandas as pd
@@ -294,7 +295,15 @@ def get_directional_relationship(price_segment, price_series, rsi_segment, rsi_s
     top_limit_price_line = cross_chart_value + height_extreme_segment
     bottom_limit_price_line = cross_chart_value - height_extreme_segment
 
+    limit_size_relative_index = index_relative_position_max_min * (1 + constants.FIBONACCI_VALUE)
+
+    if limit_size_relative_index > filtered_price_series.size:
+        valid_segment = True
+    else:
+        valid_segment = False
+
     return {
+        "valid": valid_segment,
         "price_segment": price_segment,
         "rsi_segment": rsi_segment,
         "extremes_type": extremes_type,
