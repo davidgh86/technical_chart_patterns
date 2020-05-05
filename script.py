@@ -1,4 +1,5 @@
 import config
+import constants
 
 import os
 import pandas as pd
@@ -65,8 +66,8 @@ def resample_data(data_frame, frequency='1W'):
                                                                               'close': 'last'}).dropna()
 
 
-def get_max_min(prices, smoothing, window_range, column='close'):
-    smooth_prices = prices['close'].rolling(window=smoothing).mean().dropna()
+def get_max_min(prices, smoothing_extremes, window_range, column='close'):
+    smooth_prices = prices['close'].rolling(window=smoothing_extremes).mean().dropna()
     local_max = argrelextrema(smooth_prices.values, np.greater)[0]
     local_min = argrelextrema(smooth_prices.values, np.less)[0]
     price_local_max_dt = []
@@ -91,8 +92,8 @@ def get_max_min(prices, smoothing, window_range, column='close'):
     return max_min
 
 
-def get_min(prices, smoothing, window_range, column='close'):
-    smooth_prices = prices['close'].rolling(window=smoothing).mean().dropna()
+def get_minimums(prices, smoothing_extremes, window_range, column='close'):
+    smooth_prices = prices['close'].rolling(window=smoothing_extremes).mean().dropna()
     local_min = argrelextrema(smooth_prices.values, np.less)[0]
 
     price_local_min_dt = []
@@ -112,8 +113,8 @@ def get_min(prices, smoothing, window_range, column='close'):
     return minima
 
 
-def get_max(prices, smoothing, window_range, column='close'):
-    smooth_prices = prices['close'].rolling(window=smoothing).mean().dropna()
+def get_maximums(prices, smoothing_extremes, window_range, column='close'):
+    smooth_prices = prices['close'].rolling(window=smoothing_extremes).mean().dropna()
     local_max = argrelextrema(smooth_prices.values, np.greater)[0]
     price_local_max_dt = []
     for i in local_max:
@@ -136,8 +137,8 @@ def get_stock(dataframe):
     return dataframe['close']
 
 
-def RSI(data, time_window):
-    diff = data.diff(1).dropna()  # diff in one field(one day)
+def RSI(data_frame, time_window):
+    diff = data_frame.diff(1).dropna()  # diff in one field(one day)
 
     # this preservers dimensions off diff values
     up_chg = 0 * diff
@@ -273,19 +274,58 @@ def get_directional_relationship(price_segment, price_series, rsi_segment, rsi_s
     filtered_price_series = price_series.iloc[index_segments[0]:index_segments[1]]
     filtered_rsi_series = price_series.iloc[index_segments[0]:index_segments[1]]
 
+    max_min_index_label = filtered_price_series.idxmax() if price_area > 0 else filtered_price_series.idxmin()
+    index_absolute_position_max_min = price_series.index.get_loc(max_min_index_label)
+    index_relative_position_max_min = filtered_price_series.index.get_loc(max_min_index_label)
+
+    equation_segment = get_linear_equation_from_segment(price_segment)
+    segment_value_in_max_min = equation_segment(index_absolute_position_max_min)
+
+    filtered_price_series_min = filtered_price_series.min()
+    filtered_price_series_max = filtered_price_series.max()
+
+    extremes_type = "min" if price_area > 0 else "max"
+
+    if extremes_type == "max":
+        height_extreme_segment = segment_value_in_max_min - filtered_price_series_min
+    else:
+        height_extreme_segment = filtered_price_series_max - segment_value_in_max_min
+
+    cross_chart_value = filtered_price_series_min if extremes_type == "max" else filtered_price_series_max
+    top_limit_price_line = cross_chart_value + height_extreme_segment
+    bottom_limit_price_line = cross_chart_value - height_extreme_segment
+
+    limit_size_relative_index = index_relative_position_max_min * (1 + constants.FIBONACCI_VALUE)
+
+    if limit_size_relative_index > filtered_price_series.size:
+        valid_segment = True
+    else:
+        valid_segment = False
+
     return {
+        "valid": valid_segment,
         "price_segment": price_segment,
         "rsi_segment": rsi_segment,
-        "extremes_type": "min" if price_area > 0 else "max",
+        "extremes_type": extremes_type,
         "directional_relationship_type": directional_relationship_type,
         "slope_abs_diff": abs(price_slope) + abs(rsi_slope),
         "price_relationship_info": {
             "slope": price_slope,
             "area": abs(price_area),
-            "min": filtered_price_series.min(),
-            "max": filtered_price_series.max(),
+            "min": filtered_price_series_min,
+            "max": filtered_price_series_max,
             "mean": filtered_price_series.mean(),
             "standard_deviation": filtered_price_series.std(),
+            "analytics_indicator_info": {
+                "cross_chart_value": cross_chart_value,
+                "max_min_index_label": max_min_index_label,
+                "index_absolute_position_max_min": index_absolute_position_max_min,
+                "index_relative_position_max_min": index_relative_position_max_min,
+                "segment_value_in_max_min": segment_value_in_max_min,
+                "height_extreme_segment": height_extreme_segment,
+                "top_limit_price_line": top_limit_price_line,
+                "bottom_limit_price_line": bottom_limit_price_line
+            },
             "diff": {
                 "sum": price_area,
                 "min": np.min(price_diff),
@@ -328,19 +368,19 @@ resampled_data = resample_data(data)
 smoothing = 3
 window = 10
 
-max = get_max(resampled_data, smoothing, window)
-min = get_min(resampled_data, smoothing, window)
+maximums = get_maximums(resampled_data, smoothing, window)
+minimums = get_minimums(resampled_data, smoothing, window)
 
-all_segments_max = get_all_segments(max)
-all_segments_min = get_all_segments(min)
+all_segments_max = get_all_segments(maximums)
+all_segments_min = get_all_segments(minimums)
 
 filtered_segments_max = filter_uncrossed_segments(all_segments_max, resampled_data['close'], True)
 filtered_segments_min = filter_uncrossed_segments(all_segments_min, resampled_data['close'], False)
 
 resampled_data['RSI'] = RSI(resampled_data['close'], 14)
 
-max_rsi = get_max(resampled_data, smoothing, window, "RSI")
-min_rsi = get_min(resampled_data, smoothing, window, "RSI")
+max_rsi = get_maximums(resampled_data, smoothing, window, "RSI")
+min_rsi = get_minimums(resampled_data, smoothing, window, "RSI")
 
 all_segments_max_rsi = get_all_segments(max_rsi)
 all_segments_min_rsi = get_all_segments(min_rsi)
@@ -364,8 +404,8 @@ for divergence in divergences:
 plt.subplot(2, 1, 1)
 plt.plot()
 resampled_data.reset_index()['close'].plot()
-plt.scatter(max.index, max.values, color='orange', alpha=.5)
-plt.scatter(min.index, min.values, color='green', alpha=.5)
+plt.scatter(maximums.index, maximums.values, color='orange', alpha=.5)
+plt.scatter(minimums.index, minimums.values, color='green', alpha=.5)
 plot_segments(prices_divergences)
 # plot_segments(filtered_segments_min)
 
