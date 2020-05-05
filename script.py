@@ -274,26 +274,37 @@ def get_directional_relationship(price_segment, price_series, rsi_segment, rsi_s
     filtered_rsi_series = price_series.iloc[index_segments[0]:index_segments[1]]
 
     max_min_label = filtered_price_series.idxmax() if price_area > 0 else filtered_price_series.idxmin()
-    ## max_min_position = price_segment.index.get_loc(max_min_label)
+    max_min_position = price_series.index.get_loc(max_min_label)
 
     equation_segment = get_linear_equation_from_segment(price_segment)
     segment_value_in_max_min = equation_segment(max_min_position)
 
+    filtered_price_series_min = filtered_price_series.min()
+    filtered_price_series_max = filtered_price_series.max()
+
+    extremes_type = "min" if price_area > 0 else "max"
+
+    if extremes_type == "max":
+        height_extreme_segment = segment_value_in_max_min - filtered_price_series_min
+    else:
+        height_extreme_segment = filtered_price_series_max - segment_value_in_max_min
+
     return {
         "price_segment": price_segment,
         "rsi_segment": rsi_segment,
-        "extremes_type": "min" if price_area > 0 else "max",
+        "extremes_type": extremes_type,
         "directional_relationship_type": directional_relationship_type,
         "slope_abs_diff": abs(price_slope) + abs(rsi_slope),
         "price_relationship_info": {
             "slope": price_slope,
             "area": abs(price_area),
-            "min": filtered_price_series.min(),
-            "max": filtered_price_series.max(),
+            "min": filtered_price_series_min,
+            "max": filtered_price_series_max,
             "mean": filtered_price_series.mean(),
             "standard_deviation": filtered_price_series.std(),
             "pos_max_min": max_min_label,
             "segment_value_in_max_min": segment_value_in_max_min,
+            "height_extreme_segment": height_extreme_segment,
             "diff": {
                 "sum": price_area,
                 "min": np.min(price_diff),
