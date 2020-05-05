@@ -273,11 +273,12 @@ def get_directional_relationship(price_segment, price_series, rsi_segment, rsi_s
     filtered_price_series = price_series.iloc[index_segments[0]:index_segments[1]]
     filtered_rsi_series = price_series.iloc[index_segments[0]:index_segments[1]]
 
-    max_min_label = filtered_price_series.idxmax() if price_area > 0 else filtered_price_series.idxmin()
-    max_min_position = price_series.index.get_loc(max_min_label)
+    max_min_index_label = filtered_price_series.idxmax() if price_area > 0 else filtered_price_series.idxmin()
+    index_absolute_position_max_min = price_series.index.get_loc(max_min_index_label)
+    index_relative_position_max_min = filtered_price_series.index.get_loc(max_min_index_label)
 
     equation_segment = get_linear_equation_from_segment(price_segment)
-    segment_value_in_max_min = equation_segment(max_min_position)
+    segment_value_in_max_min = equation_segment(index_absolute_position_max_min)
 
     filtered_price_series_min = filtered_price_series.min()
     filtered_price_series_max = filtered_price_series.max()
@@ -288,6 +289,10 @@ def get_directional_relationship(price_segment, price_series, rsi_segment, rsi_s
         height_extreme_segment = segment_value_in_max_min - filtered_price_series_min
     else:
         height_extreme_segment = filtered_price_series_max - segment_value_in_max_min
+
+    cross_chart_value = filtered_price_series_min if extremes_type == "max" else filtered_price_series_max
+    top_limit_price_line = cross_chart_value + height_extreme_segment
+    bottom_limit_price_line = cross_chart_value - height_extreme_segment
 
     return {
         "price_segment": price_segment,
@@ -302,9 +307,16 @@ def get_directional_relationship(price_segment, price_series, rsi_segment, rsi_s
             "max": filtered_price_series_max,
             "mean": filtered_price_series.mean(),
             "standard_deviation": filtered_price_series.std(),
-            "pos_max_min": max_min_label,
-            "segment_value_in_max_min": segment_value_in_max_min,
-            "height_extreme_segment": height_extreme_segment,
+            "analytics_indicator_info": {
+                "cross_chart_value": cross_chart_value,
+                "max_min_index_label": max_min_index_label,
+                "index_absolute_position_max_min": index_absolute_position_max_min,
+                "index_relative_position_max_min": index_relative_position_max_min,
+                "segment_value_in_max_min": segment_value_in_max_min,
+                "height_extreme_segment": height_extreme_segment,
+                "top_limit_price_line": top_limit_price_line,
+                "bottom_limit_price_line": bottom_limit_price_line
+            },
             "diff": {
                 "sum": price_area,
                 "min": np.min(price_diff),
