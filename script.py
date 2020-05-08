@@ -340,7 +340,6 @@ def get_directional_relationship(price_segment, price_series, rsi_segment, rsi_s
         "directional_relationship_type": directional_relationship_type,
         "slope_abs_diff": abs(price_slope) + abs(rsi_slope),
         "price_relationship_info": {
-            "tendency": tendency,
             "slope": price_slope,
             "area": abs(price_area),
             "min": filtered_price_series_min,
@@ -348,6 +347,8 @@ def get_directional_relationship(price_segment, price_series, rsi_segment, rsi_s
             "mean": filtered_price_series.mean(),
             "standard_deviation": filtered_price_series.std(),
             "analytics_indicator_info": {
+                "tendency": tendency,
+                "rsi_entry_range": rsi_entry_range,
                 "cross_chart_value": cross_chart_value,
                 "max_min_index_label": max_min_index_label,
                 "index_absolute_position_max_min": index_absolute_position_max_min,
@@ -366,7 +367,6 @@ def get_directional_relationship(price_segment, price_series, rsi_segment, rsi_s
             }
         },
         "rsi_relationship_info": {
-            "rsi_entry_range": rsi_entry_range,
             "slope": rsi_slope,
             "area": abs(rsi_area),
             "min": filtered_rsi_series.min(),
