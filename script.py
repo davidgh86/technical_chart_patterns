@@ -544,7 +544,6 @@ def plot_charts_single_segment(segment_info):
         red_patch = mpatches.Patch(color='red', label='Invalido')
         plt.legend(handles=[red_patch])
 
-
     ax2 = fig.add_subplot(212)
     resampled_data.reset_index()['RSI'].plot(ax=ax2)
     ax2.scatter(max_rsi.index, max_rsi.values, color='orange', alpha=.5)
