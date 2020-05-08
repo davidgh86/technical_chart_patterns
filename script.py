@@ -385,6 +385,9 @@ if len(sys.argv) > 3:
     try:
         start_date = datetime.datetime.strptime(start_date_string, '%d-%m-%Y-%H:%M:%S')
         end_date = datetime.datetime.strptime(end_date_string, '%d-%m-%Y-%H:%M:%S')
+        if start_date >= end_date:
+            print("La fecha inicial tiene que ser anterior a la final")
+            exit()
         resampled_data = resampled_data.loc[start_date:end_date]
     except ValueError:
         print("El formato de fechas debe de ser del tipo 9-6-2019-8:15:27 con precisión máxima de segundos")
