@@ -15,3 +15,6 @@ usage:
 
 python script.py AAPL 1W 9-6-2014-8:15:27 9-6-2019-8:15:27
 python script.py symbol start-date end-date temporality
+
+temporality parameters
+https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#dateoffset-objects
