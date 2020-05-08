@@ -10,6 +10,7 @@ import alpaca_trade_api as tradeapi
 import numpy as np
 from scipy.signal import argrelextrema
 import datetime
+import matplotlib.patches as mpatches
 
 api = tradeapi.REST(config.API_KEY,
                     config.SECRET_KEY,
@@ -181,13 +182,13 @@ def get_all_segments(series):
     return result_array
 
 
-def plot_single_segment(segment):
+def plot_single_segment(segment, ax):
     point1 = segment[0]
     point2 = segment[1]
 
     x_values = [point1[0], point2[0]]
     y_values = [point1[1], point2[1]]
-    plt.plot(x_values, y_values)
+    ax.plot(x_values, y_values)
 
 
 def plot_single_segment_with_limits(segment):
@@ -481,7 +482,9 @@ def get_plot_segment_info(divergence_list):
         divergence_plot_info.append({
             "price_segment": divergence["price_segment"],
             "rsi_segment": divergence["rsi_segment"],
-            "valid": divergence["valid"]
+            "valid": divergence["valid"],
+            "buying_price": divergence["price_relationship_info"]["analytics_indicator_info"]["buying_price"],
+            "selling_price": divergence["price_relationship_info"]["analytics_indicator_info"]["selling_price"]
         })
     return divergence_plot_info
 
@@ -505,12 +508,11 @@ def plot_charts(prices_divergence_list, rsi_divergence_list):
     plt.show()
 
 
-def plot_charts_single_segment(segment_info):
+def plot_charts_single_segment2(segment_info):
     price_divergence = segment_info["price_segment"]
     rsi_divergence = segment_info["rsi_segment"]
 
     plt.subplot(2, 1, 1)
-    plt.plot()
     resampled_data.reset_index()['close'].plot()
     plt.scatter(maximums.index, maximums.values, color='orange', alpha=.5)
     plt.scatter(minimums.index, minimums.values, color='green', alpha=.5)
@@ -521,6 +523,35 @@ def plot_charts_single_segment(segment_info):
     plt.scatter(max_rsi.index, max_rsi.values, color='orange', alpha=.5)
     plt.scatter(min_rsi.index, min_rsi.values, color='green', alpha=.5)
     plot_single_segment(rsi_divergence)
+    plt.show()
+
+
+def plot_charts_single_segment(segment_info):
+    price_divergence = segment_info["price_segment"]
+    rsi_divergence = segment_info["rsi_segment"]
+
+    fig = plt.figure()
+    ax = fig.add_subplot(211)
+
+    resampled_data.reset_index()['close'].plot(ax=ax)
+    ax.scatter(maximums.index, maximums.values, color='orange', alpha=.5)
+    ax.scatter(minimums.index, minimums.values, color='green', alpha=.5)
+    plot_single_segment(price_divergence, ax)
+    if segment_info["valid"]:
+        ax.hlines(segment_info["buying_price"], 0, len(resampled_data), color="green")
+        ax.hlines(segment_info["selling_price"], 0, len(resampled_data), color="red")
+    else:
+        red_patch = mpatches.Patch(color='red', label='Invalido')
+        plt.legend(handles=[red_patch])
+
+
+    ax2 = fig.add_subplot(212)
+    resampled_data.reset_index()['RSI'].plot(ax=ax2)
+    ax2.scatter(max_rsi.index, max_rsi.values, color='orange', alpha=.5)
+    ax2.scatter(min_rsi.index, min_rsi.values, color='green', alpha=.5)
+    plot_single_segment(rsi_divergence, ax2)
+    ax2.hlines(30, 0, len(resampled_data), color="grey")
+    ax2.hlines(70, 0, len(resampled_data), color="grey")
     plt.show()
 
 
