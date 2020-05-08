@@ -1,3 +1,5 @@
+import sys
+
 import config
 import constants
 
@@ -7,6 +9,7 @@ from matplotlib import pyplot as plt
 import alpaca_trade_api as tradeapi
 import numpy as np
 from scipy.signal import argrelextrema
+import datetime
 
 api = tradeapi.REST(config.API_KEY,
                     config.SECRET_KEY,
@@ -252,7 +255,7 @@ def is_divergent_or_convergent(price_segment, rsi_segment, offset=0):
 def get_diff(segment, series):
     equation_function = get_linear_equation_from_segment(segment)
     diff_array = []
-    for index in range(segment[0][0]+1, segment[1][0]):
+    for index in range(segment[0][0] + 1, segment[1][0]):
         segment_y = equation_function(index)
         diff_array.append(series.iloc[index] - segment_y)
     return diff_array
@@ -362,8 +365,30 @@ def join_segments(price_segments, price_series, rsi_segments, rsi_series):
     return valid_convergences_divergences
 
 
-data = get_data('AAPL')
-resampled_data = resample_data(data)
+number_of_arguments = len(sys.argv)
+if number_of_arguments != 2 and number_of_arguments != 3 and number_of_arguments != 5:
+    print("python.py symbol ([temporality] | temporality [start-date end-date]) ")
+    print("example python.py AAPL")
+    print("example python.py AAPL 1W")
+    print("example python.py AAPL 1W 29-3-2018:15:27 5-4-2019-08:15:27")
+    exit()
+
+data = get_data(sys.argv[1])
+if len(sys.argv) > 2:
+    resampled_data = resample_data(data, sys.argv[2])
+else:
+    resampled_data = resample_data(data)
+
+if len(sys.argv) > 3:
+    start_date_string = sys.argv[3]
+    end_date_string = sys.argv[4]
+    try:
+        start_date = datetime.datetime.strptime(start_date_string, '%d-%m-%Y-%H:%M:%S')
+        end_date = datetime.datetime.strptime(end_date_string, '%d-%m-%Y-%H:%M:%S')
+        resampled_data = resampled_data.loc[start_date:end_date]
+    except ValueError:
+        print("El formato de fechas debe de ser del tipo 9-6-2019-8:15:27 con precisión máxima de segundos")
+        exit()
 
 smoothing = 3
 window = 10
