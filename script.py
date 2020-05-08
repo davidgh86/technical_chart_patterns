@@ -306,7 +306,6 @@ def get_directional_relationship(price_segment, price_series, rsi_segment, rsi_s
             valid_segment = False
             tendency = "unknown"
     else:
-        # es oculta
         rsi_entry_range = "hidden"
         if price_slope > 0 and extremes_type == "min":
             valid_segment = True
@@ -324,13 +323,26 @@ def get_directional_relationship(price_segment, price_series, rsi_segment, rsi_s
         height_extreme_segment = filtered_price_series_max - segment_value_in_max_min
 
     cross_chart_value = filtered_price_series_min if extremes_type == "max" else filtered_price_series_max
-    top_limit_price_line = cross_chart_value + height_extreme_segment
-    bottom_limit_price_line = cross_chart_value - height_extreme_segment
 
     limit_size_relative_index = index_relative_position_max_min * (1 + constants.FIBONACCI_VALUE)
 
     if valid_segment and limit_size_relative_index <= filtered_price_series.size:
         valid_segment = False
+
+    if valid_segment:
+        activation_price = cross_chart_value
+        if tendency == "rising":
+            buying_price = cross_chart_value
+            selling_price = cross_chart_value + height_extreme_segment
+        elif tendency == "decreasing":
+            buying_price = cross_chart_value - height_extreme_segment
+            selling_price = cross_chart_value
+        else:
+            valid_segment = False
+    else:
+        activation_price = None
+        buying_price = None
+        selling_price = None
 
     return {
         "valid": valid_segment,
@@ -355,8 +367,9 @@ def get_directional_relationship(price_segment, price_series, rsi_segment, rsi_s
                 "index_relative_position_max_min": index_relative_position_max_min,
                 "segment_value_in_max_min": segment_value_in_max_min,
                 "height_extreme_segment": height_extreme_segment,
-                "top_limit_price_line": top_limit_price_line,
-                "bottom_limit_price_line": bottom_limit_price_line
+                "activation_price": activation_price,
+                "buying_price": buying_price,
+                "selling_price": selling_price
             },
             "diff": {
                 "sum": price_area,
