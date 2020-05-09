@@ -334,7 +334,6 @@ def get_directional_relationship(price_segment, price_series, rsi_segment, rsi_s
         valid_segment = False
         invalid_error = "Una de las pendientes es 0"
 
-
     cross_chart_value = filtered_price_series_min if extremes_type == "max" else filtered_price_series_max
 
     limit_size_relative_index = index_relative_position_max_min * (1 + constants.FIBONACCI_VALUE)
@@ -431,12 +430,17 @@ def join_segments(price_segments, price_series, rsi_segments, rsi_series):
 
 
 number_of_arguments = len(sys.argv)
-if number_of_arguments != 2 and number_of_arguments != 3 and number_of_arguments != 5:
-    print("python.py symbol ([temporality] | temporality [start-date end-date])")
+if number_of_arguments != 2 and number_of_arguments != 3 and number_of_arguments != 5 and number_of_arguments != 6 \
+        and number_of_arguments != 7:
+    print("python.py symbol ([temporality] | temporality [start-date end-date] | temporality start-date end-date ["
+          "smooth] | | temporality start-date end-date smooth window)")
     print("example python.py AAPL")
     print("example python.py AAPL 1W")
     print("example python.py AAPL 1W 29-3-2018:15:27 5-4-2019-08:15:27")
     exit()
+
+smoothing = 5
+window = 10
 
 data = get_data(sys.argv[1])
 if len(sys.argv) > 2:
@@ -457,9 +461,18 @@ if len(sys.argv) > 3:
     except ValueError:
         print("El formato de fechas debe de ser del tipo 9-6-2019-8:15:27 con precisión máxima de segundos")
         exit()
-
-smoothing = 3
-window = 10
+    if len(sys.argv) > 5:
+        try:
+            smoothing = int(sys.argv[5])
+        except ValueError:
+            print("El el parametro smoothing debe de ser un entero")
+            exit()
+        if len(sys.argv) > 6:
+            try:
+                smoothing = int(sys.argv[5])
+            except ValueError:
+                print("El el parametro window debe de ser un entero")
+                exit()
 
 maximums = get_maximums(resampled_data, smoothing, window)
 minimums = get_minimums(resampled_data, smoothing, window)
