@@ -70,32 +70,6 @@ def resample_data(data_frame, frequency='1W'):
                                                                               'close': 'last'}).dropna()
 
 
-def get_max_min(prices, smoothing_extremes, window_range, column='close'):
-    smooth_prices = prices['close'].rolling(window=smoothing_extremes).mean().dropna()
-    local_max = argrelextrema(smooth_prices.values, np.greater)[0]
-    local_min = argrelextrema(smooth_prices.values, np.less)[0]
-    price_local_max_dt = []
-    for i in local_max:
-        if (i > window_range) and (i < len(prices) - window_range):
-            price_local_max_dt.append(prices.iloc[i - window_range:i + window_range][column].idxmax())
-    price_local_min_dt = []
-    for i in local_min:
-        if (i > window_range) and (i < len(prices) - window_range):
-            price_local_min_dt.append(prices.iloc[i - window_range:i + window_range][column].idxmin())
-    maxima = pd.DataFrame(prices.loc[price_local_max_dt])
-    minima = pd.DataFrame(prices.loc[price_local_min_dt])
-    max_min = pd.concat([maxima, minima]).sort_index()
-    max_min.index.name = 'date'
-    max_min = max_min.reset_index()
-    # Nos quedamos con los no duplicados
-    max_min = max_min[~max_min.date.duplicated()]
-    p = prices.reset_index()
-    max_min['day_num'] = p[p['timestamp'].isin(max_min.date)].index.values
-    max_min = max_min.set_index('day_num')[column]
-
-    return max_min
-
-
 def get_minimums(prices, smoothing_extremes, window_range, column='close'):
     smooth_prices = prices['close'].rolling(window=smoothing_extremes).mean().dropna()
     local_min = argrelextrema(smooth_prices.values, np.less)[0]
