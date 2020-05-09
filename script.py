@@ -334,10 +334,6 @@ def get_directional_relationship(price_segment, price_series, rsi_segment, rsi_s
         valid_segment = False
         invalid_error = "Una de las pendientes es 0"
 
-    if extremes_type == "max":
-        height_extreme_segment = segment_value_in_max_min - filtered_price_series_min
-    else:
-        height_extreme_segment = filtered_price_series_max - segment_value_in_max_min
 
     cross_chart_value = filtered_price_series_min if extremes_type == "max" else filtered_price_series_max
 
@@ -352,16 +348,18 @@ def get_directional_relationship(price_segment, price_series, rsi_segment, rsi_s
         valid_segment = False
         invalid_error = "divergencia demasiado larga"
 
+    height_extreme_segment = abs(filtered_price_series_min - filtered_price_series_max)
+
     if valid_segment:
         activation_price = cross_chart_value
         if tendency == "rising":
-            buying_price = cross_chart_value
-            selling_price = cross_chart_value + height_extreme_segment
             stop_price = filtered_price_series_min
+            selling_price = cross_chart_value
+            buying_price = cross_chart_value + height_extreme_segment
         elif tendency == "decreasing":
-            buying_price = cross_chart_value - height_extreme_segment
             selling_price = cross_chart_value
             stop_price = filtered_price_series_max
+            buying_price = cross_chart_value - height_extreme_segment
         else:
             valid_segment = False
             invalid_error = "No sabemos si es alcista o bajista, no ha sido posible la clasificacion"
@@ -434,7 +432,7 @@ def join_segments(price_segments, price_series, rsi_segments, rsi_series):
 
 number_of_arguments = len(sys.argv)
 if number_of_arguments != 2 and number_of_arguments != 3 and number_of_arguments != 5:
-    print("python.py symbol ([temporality] | temporality [start-date end-date]) ")
+    print("python.py symbol ([temporality] | temporality [start-date end-date])")
     print("example python.py AAPL")
     print("example python.py AAPL 1W")
     print("example python.py AAPL 1W 29-3-2018:15:27 5-4-2019-08:15:27")
