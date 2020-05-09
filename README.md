@@ -11,7 +11,7 @@ ANACONDA_DIVERGENCIAS_ENV is and anaconda enviroment with the next dependencies 
 - numpy
 - scipy
 
-usage:
+usage: 
 
 python script.py AAPL 1W 9-6-2014-8:15:27 9-6-2019-8:15:27
 python script.py symbol temporality start-date end-date 
