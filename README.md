@@ -16,6 +16,8 @@ usage:
 python script.py AAPL 1W 9-6-2014-8:15:27 9-6-2019-8:15:27 5 10
 python script.py symbol temporality start-date end-date smoothing window
 
+default values for smoothing 5 and window 10
+
 date format dd-mm-yyyy-hh:MM:ss
 temporality parameters (https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#dateoffset-objects)
 
