@@ -188,7 +188,7 @@ def plot_single_segment(segment, ax):
 
     x_values = [point1[0], point2[0]]
     y_values = [point1[1], point2[1]]
-    ax.plot(x_values, y_values)
+    ax.plot(x_values, y_values, color="purple")
 
 
 def plot_single_segment_with_limits(segment):
@@ -301,31 +301,38 @@ def get_directional_relationship(price_segment, price_series, rsi_segment, rsi_s
 
     if filtered_rsi_series[0] > 70:
         rsi_entry_range = "over_buy"
-        if rsi_slope < 0 and extremes_type == "max":
-            valid_segment = True
-            tendency = "decreasing"
-        else:
-            valid_segment = False
-            tendency = "unknown"
     elif filtered_rsi_series[0] < 30:
         rsi_entry_range = "over_sell"
-        if rsi_slope > 0 and extremes_type == "min":
-            valid_segment = True
-            tendency = "rising"
-        else:
-            valid_segment = False
-            tendency = "unknown"
     else:
-        rsi_entry_range = "hidden"
-        if price_slope > 0 and extremes_type == "min":
-            valid_segment = True
+        rsi_entry_range = "normal"
+
+    is_hidden = None
+    invalid_error = None
+    valid_segment = True
+
+    if rsi_slope > 0 and price_slope < 0:
+        if extremes_type == "min":
             tendency = "rising"
-        elif price_slope < 0 and extremes_type == "max":
-            valid_segment = True
+            is_hidden = False
+        elif extremes_type == "max":
             tendency = "decreasing"
+            is_hidden = True
         else:
             valid_segment = False
-            tendency = "unknown"
+            invalid_error = "Error en el programa los tipos de extremos no se han calculado"
+    elif rsi_slope < 0 and price_slope > 0:
+        if extremes_type == "min":
+            tendency = "rising"
+            is_hidden = True
+        elif extremes_type == "max":
+            tendency = "decreasing"
+            is_hidden = False
+        else:
+            valid_segment = False
+            invalid_error = "Error en el programa los tipos de extremos no se han calculado"
+    else:
+        valid_segment = False
+        invalid_error = "Una de las pendientes es 0"
 
     if extremes_type == "max":
         height_extreme_segment = segment_value_in_max_min - filtered_price_series_min
@@ -336,29 +343,36 @@ def get_directional_relationship(price_segment, price_series, rsi_segment, rsi_s
 
     limit_size_relative_index = index_relative_position_max_min * (1 + constants.FIBONACCI_VALUE)
 
+    activation_price = None
+    buying_price = None
+    selling_price = None
+    stop_price = None
+
     if valid_segment and limit_size_relative_index <= filtered_price_series.size:
         valid_segment = False
+        invalid_error = "divergencia demasiado larga"
 
     if valid_segment:
         activation_price = cross_chart_value
         if tendency == "rising":
             buying_price = cross_chart_value
             selling_price = cross_chart_value + height_extreme_segment
+            stop_price = filtered_price_series_min
         elif tendency == "decreasing":
             buying_price = cross_chart_value - height_extreme_segment
             selling_price = cross_chart_value
+            stop_price = filtered_price_series_max
         else:
             valid_segment = False
-    else:
-        activation_price = None
-        buying_price = None
-        selling_price = None
+            invalid_error = "No sabemos si es alcista o bajista, no ha sido posible la clasificacion"
 
     return {
         "valid": valid_segment,
+        "invalid_error": invalid_error,
         "price_segment": price_segment,
         "rsi_segment": rsi_segment,
         "extremes_type": extremes_type,
+        "is_hidden": is_hidden,
         "directional_relationship_type": directional_relationship_type,
         "slope_abs_diff": abs(price_slope) + abs(rsi_slope),
         "price_relationship_info": {
@@ -379,7 +393,8 @@ def get_directional_relationship(price_segment, price_series, rsi_segment, rsi_s
                 "height_extreme_segment": height_extreme_segment,
                 "activation_price": activation_price,
                 "buying_price": buying_price,
-                "selling_price": selling_price
+                "selling_price": selling_price,
+                "stop_price": stop_price
             },
             "diff": {
                 "sum": price_area,
@@ -483,47 +498,15 @@ def get_plot_segment_info(divergence_list):
             "price_segment": divergence["price_segment"],
             "rsi_segment": divergence["rsi_segment"],
             "valid": divergence["valid"],
+            "invalid_error": divergence["invalid_error"],
             "buying_price": divergence["price_relationship_info"]["analytics_indicator_info"]["buying_price"],
-            "selling_price": divergence["price_relationship_info"]["analytics_indicator_info"]["selling_price"]
+            "selling_price": divergence["price_relationship_info"]["analytics_indicator_info"]["selling_price"],
+            "stop_price": divergence["price_relationship_info"]["analytics_indicator_info"]["stop_price"]
         })
     return divergence_plot_info
 
 
 plot_segment_info_list = get_plot_segment_info(divergences)
-
-
-def plot_charts(prices_divergence_list, rsi_divergence_list):
-    plt.subplot(2, 1, 1)
-    plt.plot()
-    resampled_data.reset_index()['close'].plot()
-    plt.scatter(maximums.index, maximums.values, color='orange', alpha=.5)
-    plt.scatter(minimums.index, minimums.values, color='green', alpha=.5)
-    plot_segments(prices_divergence_list)
-
-    plt.subplot(2, 1, 2)
-    resampled_data.reset_index()['RSI'].plot()
-    plt.scatter(max_rsi.index, max_rsi.values, color='orange', alpha=.5)
-    plt.scatter(min_rsi.index, min_rsi.values, color='green', alpha=.5)
-    plot_segments(rsi_divergence_list)
-    plt.show()
-
-
-def plot_charts_single_segment2(segment_info):
-    price_divergence = segment_info["price_segment"]
-    rsi_divergence = segment_info["rsi_segment"]
-
-    plt.subplot(2, 1, 1)
-    resampled_data.reset_index()['close'].plot()
-    plt.scatter(maximums.index, maximums.values, color='orange', alpha=.5)
-    plt.scatter(minimums.index, minimums.values, color='green', alpha=.5)
-    plot_single_segment(price_divergence)
-
-    plt.subplot(2, 1, 2)
-    resampled_data.reset_index()['RSI'].plot()
-    plt.scatter(max_rsi.index, max_rsi.values, color='orange', alpha=.5)
-    plt.scatter(min_rsi.index, min_rsi.values, color='green', alpha=.5)
-    plot_single_segment(rsi_divergence)
-    plt.show()
 
 
 def plot_charts_single_segment(segment_info):
@@ -540,8 +523,10 @@ def plot_charts_single_segment(segment_info):
     if segment_info["valid"]:
         ax.hlines(segment_info["buying_price"], 0, len(resampled_data), color="green")
         ax.hlines(segment_info["selling_price"], 0, len(resampled_data), color="red")
+        ax.hlines(segment_info["stop_price"], 0, len(resampled_data), color="orange")
     else:
-        red_patch = mpatches.Patch(color='red', label='Invalido')
+        error_message = "Inválido: " + segment_info["invalid_error"]
+        red_patch = mpatches.Patch(color='red', label=error_message)
         plt.legend(handles=[red_patch])
 
     ax2 = fig.add_subplot(212)
