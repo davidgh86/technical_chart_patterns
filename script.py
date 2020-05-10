@@ -70,45 +70,29 @@ def resample_data(data_frame, frequency='1W'):
                                                                               'close': 'last'}).dropna()
 
 
-def get_minimums(prices, smoothing_extremes, window_range, column='close'):
+def get_extreme_points(prices, smoothing_extremes, window_range, type, column='close'):
     smooth_prices = prices['close'].rolling(window=smoothing_extremes).mean().dropna()
-    local_min = argrelextrema(smooth_prices.values, np.less)[0]
-
-    price_local_min_dt = []
-    for i in local_min:
-        if (i > window_range) and (i < len(prices) - window_range):
-            price_local_min_dt.append(prices.iloc[i - window_range:i + window_range][column].idxmin())
-
-    minima = pd.DataFrame(prices.loc[price_local_min_dt]).sort_index()
-    minima.index.name = 'date'
-    minima = minima.reset_index()
-    # Nos quedamos con los no duplicados
-    minima = minima[~minima.date.duplicated()]
-    p = prices.reset_index()
-    minima['day_num'] = p[p['timestamp'].isin(minima.date)].index.values
-    minima = minima.set_index('day_num')[column]
-
-    return minima
-
-
-def get_maximums(prices, smoothing_extremes, window_range, column='close'):
-    smooth_prices = prices['close'].rolling(window=smoothing_extremes).mean().dropna()
-    local_max = argrelextrema(smooth_prices.values, np.greater)[0]
+    local_extreme = argrelextrema(smooth_prices.values, np.greater)[0]
     price_local_max_dt = []
-    for i in local_max:
+    for i in local_extreme:
         if (i > window_range) and (i < len(prices) - window_range):
-            price_local_max_dt.append(prices.iloc[i - window_range:i + window_range][column].idxmax())
+            if type == "max":
+                price_local_max_dt.append(prices.iloc[i - window_range:i + window_range][column].idxmax())
+            elif type == "min":
+                price_local_max_dt.append(prices.iloc[i - window_range:i + window_range][column].idxmin())
+            else:
+                raise ValueError("Wrong type value")
 
-    maxima = pd.DataFrame(prices.loc[price_local_max_dt]).sort_index()
-    maxima.index.name = 'date'
-    maxima = maxima.reset_index()
+    extreme = pd.DataFrame(prices.loc[price_local_max_dt]).sort_index()
+    extreme.index.name = 'date'
+    extreme = extreme.reset_index()
     # Nos quedamos con los no duplicados
-    maxima = maxima[~maxima.date.duplicated()]
+    extreme = extreme[~extreme.date.duplicated()]
     p = prices.reset_index()
-    maxima['day_num'] = p[p['timestamp'].isin(maxima.date)].index.values
-    maxima = maxima.set_index('day_num')[column]
+    extreme['day_num'] = p[p['timestamp'].isin(extreme.date)].index.values
+    extreme = extreme.set_index('day_num')[column]
 
-    return maxima
+    return extreme
 
 
 def get_stock(dataframe):
@@ -493,8 +477,8 @@ if len(sys.argv) > 3:
                 print("El el parametro window debe de ser un entero")
                 exit()
 
-maximums = get_maximums(resampled_data, smoothing, window)
-minimums = get_minimums(resampled_data, smoothing, window)
+maximums = get_extreme_points(resampled_data, smoothing, window, "max")
+minimums = get_extreme_points(resampled_data, smoothing, window, "min")
 
 all_segments_max = get_all_segments(maximums)
 all_segments_min = get_all_segments(minimums)
@@ -504,8 +488,8 @@ filtered_segments_min = filter_uncrossed_segments(all_segments_min, resampled_da
 
 resampled_data['RSI'] = RSI(resampled_data['close'], 14)
 
-max_rsi = get_maximums(resampled_data, smoothing, window, "RSI")
-min_rsi = get_minimums(resampled_data, smoothing, window, "RSI")
+max_rsi = get_extreme_points(resampled_data, smoothing, window, "max", "RSI")
+min_rsi = get_extreme_points(resampled_data, smoothing, window, "min", "RSI")
 
 all_segments_max_rsi = get_all_segments(max_rsi)
 all_segments_min_rsi = get_all_segments(min_rsi)
